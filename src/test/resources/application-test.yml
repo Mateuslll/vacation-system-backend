@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: taskflow-manager-test
+  
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  flyway:
+    enabled: false
+  
+  security:
+    user:
+      name: disabled
+      password: disabled
+
+jwt:
+  secret: test-secret-key-for-jwt-token-generation-and-validation-minimum-256-bits
+  expiration: 3600000
+  refresh-expiration: 86400000
+
+logging:
+  level:
+    root: INFO
+    com.mateuslll.taskflow: DEBUG
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
+    tc.postgresql: INFO
