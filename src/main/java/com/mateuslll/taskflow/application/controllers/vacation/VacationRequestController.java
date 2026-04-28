@@ -123,7 +123,7 @@ public class VacationRequestController implements VacationRequestAPI {
 
     @Override
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<VacationRequestResponseDTO>> getAllVacationRequests(
             @RequestParam(required = false) com.mateuslll.taskflow.domain.enums.RequestStatus status,
             @RequestParam(required = false) UUID userId,
