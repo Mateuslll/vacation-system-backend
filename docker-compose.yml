@@ -1,0 +1,69 @@
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${MS_CONTAINER_NAME:-taskflow-backend-app}
+    restart: unless-stopped
+    ports:
+      - "${MS_PORT:-8080}:8080"
+      - "${MS_DEBUG_PORT:-5005}:5005"
+    environment:
+      SERVER_PORT: 8080
+      
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-taskflow}
+      DATASOURCE_USERNAME: ${DATASOURCE_USERNAME:-taskflow}
+      DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD:-taskflow123}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
+      
+      TZ: ${TZ:-Europe/Lisbon}
+      
+      LOGGING_LEVEL_ROOT: ${LOGGING_LEVEL_ROOT:-INFO}
+      LOGGING_LEVEL_APP: ${LOGGING_LEVEL_APP:-DEBUG}
+      LOGGING_LEVEL_SQL: ${LOGGING_LEVEL_SQL:-DEBUG}
+      
+      JAVA_OPTS: "-Xmx512m -Xms256m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taskflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: taskflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-taskflow}
+      POSTGRES_USER: ${DATASOURCE_USERNAME:-taskflow}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD:-taskflow123}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+      TZ: ${TZ:-Europe/Lisbon}
+    ports:
+      - "${DB_PORT:-5440}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATASOURCE_USERNAME:-taskflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  taskflow-network:
+    driver: bridge
