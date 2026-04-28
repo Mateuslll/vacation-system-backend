@@ -1,0 +1,65 @@
+# ==========================================
+# .dockerignore - Otimização do Build
+# ==========================================
+
+# Maven
+target/
+!target/*.jar
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentação
+README.md
+*.md
+HELP.md
+
+# Logs
+*.log
+logs/
+
+# Testes
+**/test-results/
+coverage/
+
+# CI/CD
+.github/
+
+# Dependências Node (se houver frontend)
+node_modules/
+npm-debug.log
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
+*~
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Reports
+htmlReport/
+nvd_data/
