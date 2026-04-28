@@ -23,11 +23,16 @@ import com.mateuslll.taskflow.application.usecases.user.retrieve.byid.GetUserByI
 import com.mateuslll.taskflow.application.usecases.user.retrieve.byid.GetUserByIdUseCase;
 import com.mateuslll.taskflow.application.usecases.user.update.UpdateUserRequestDTO;
 import com.mateuslll.taskflow.application.usecases.user.update.UpdateUserUseCase;
+import com.mateuslll.taskflow.common.exceptions.ForbiddenException;
+import com.mateuslll.taskflow.domain.repository.DomainUserRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,6 +57,39 @@ public class UserController implements UserAPI {
     private final SetUserRolesUseCase setUserRolesUseCase;
     private final GetCollaboratorsByManagerUseCase getCollaboratorsByManagerUseCase;
     private final ListManagersAndAdminsUseCase listManagersAndAdminsUseCase;
+    private final DomainUserRepository domainUserRepository;
+
+    private static Authentication authentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    private static boolean hasAuthority(Authentication auth, String authority) {
+        return auth != null && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
+    }
+
+    private static boolean isAdmin(Authentication auth) {
+        return hasAuthority(auth, "ROLE_ADMIN");
+    }
+
+    private static boolean isManager(Authentication auth) {
+        return hasAuthority(auth, "ROLE_MANAGER");
+    }
+
+    private static UUID currentUserId(Authentication auth) {
+        return UUID.fromString(auth.getName());
+    }
+
+    private static List<UserResponseDTO> filterUsersByStatus(List<UserResponseDTO> users, UserStatusFilter status) {
+        if (status == null || status == UserStatusFilter.ALL) {
+            return users;
+        }
+        String want = status == UserStatusFilter.ACTIVE ? "ACTIVE" : "INACTIVE";
+        return users.stream()
+                .filter(u -> want.equalsIgnoreCase(u.status()))
+                .toList();
+    }
 
     @Override
     @PostMapping
@@ -66,16 +104,39 @@ public class UserController implements UserAPI {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers(
             @RequestParam(required = false) UserStatusFilter status) {
-        
-        GetAllUsersRequestDTO request = new GetAllUsersRequestDTO(status);
-        List<UserResponseDTO> response = getAllUsersUseCase.execute(request);
-        return ResponseEntity.status(OK).body(response);
+
+        Authentication auth = authentication();
+        if (isAdmin(auth)) {
+            GetAllUsersRequestDTO request = new GetAllUsersRequestDTO(status);
+            List<UserResponseDTO> response = getAllUsersUseCase.execute(request);
+            return ResponseEntity.status(OK).body(response);
+        }
+        if (isManager(auth)) {
+            UUID managerId = currentUserId(auth);
+            List<UserResponseDTO> collaborators = getCollaboratorsByManagerUseCase.execute(
+                    new GetCollaboratorsByManagerRequestDTO(managerId));
+            return ResponseEntity.status(OK).body(filterUsersByStatus(collaborators, status));
+        }
+        throw new ForbiddenException("Acesso negado");
     }
 
     @Override
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable("id") UUID userId) {
+        Authentication auth = authentication();
+        UUID requesterId = currentUserId(auth);
+        if (isAdmin(auth)) {
+            // sem restrição extra
+        } else if (isManager(auth)) {
+            if (!requesterId.equals(userId) && !domainUserRepository.existsByIdAndManagerId(userId, requesterId)) {
+                throw new ForbiddenException("Acesso negado");
+            }
+        } else {
+            if (!requesterId.equals(userId)) {
+                throw new ForbiddenException("Acesso negado");
+            }
+        }
         GetUserByIdRequestDTO request = new GetUserByIdRequestDTO(userId);
         UserResponseDTO response = getUserByIdUseCase.execute(request);
         return ResponseEntity.status(OK).body(response);
@@ -139,6 +200,13 @@ public class UserController implements UserAPI {
     public ResponseEntity<List<UserResponseDTO>> getCollaboratorsByManager(
             @PathVariable("managerId") UUID managerId) {
 
+        Authentication auth = authentication();
+        if (!isAdmin(auth)) {
+            UUID self = currentUserId(auth);
+            if (!self.equals(managerId)) {
+                throw new ForbiddenException("Acesso negado");
+            }
+        }
         GetCollaboratorsByManagerRequestDTO request = new GetCollaboratorsByManagerRequestDTO(managerId);
         List<UserResponseDTO> response = getCollaboratorsByManagerUseCase.execute(request);
         return ResponseEntity.status(OK).body(response);
