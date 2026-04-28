@@ -3,7 +3,7 @@
 > Sistema de gerenciamento de férias corporativas com Clean Architecture e Domain-Driven Design
 
 **Versão:** 0.0.1-SNAPSHOT  
-**Status:** ✅ Desenvolvimento Inicial Completo | ⚠️ Requer JWT Security
+**Status:** ✅ Em desenvolvimento ativo (API funcional com autenticação JWT)
 
 ---
 
@@ -41,7 +41,7 @@ As duas imagens publicas ja estao no Docker Hub:
 **Acessos:**
 - Frontend: http://localhost:3000
 - API: http://localhost:8080/api/v1
-- Swagger: http://localhost:8080/swagger-ui/index.html
+- Swagger: http://localhost:8080/api/v1/swagger-ui/index.html
 - PostgreSQL: localhost:5540 (user: `taskflow`, password: `taskflow123`, db: `taskflow`)
 
 Para encerrar:
@@ -81,111 +81,49 @@ O **TaskFlow Manager** é uma plataforma corporativa para gestão de férias e r
 
 **DevOps:**
 - 🐳 Docker + Docker Compose
-- 📦Bitbucket pipelines 
+- 📦 Pipeline CI/CD (integração contínua)
 ---
 
 ## 🏗️ Arquitetura
 
-O projeto segue os princípios de **Clean Architecture** e **Domain-Driven Design**, organizando o código em camadas bem definidas com separação clara de responsabilidades.
+O projeto segue **Clean Architecture + DDD**, com separação entre domínio, aplicação e infraestrutura.
 
-### 📐 Estrutura de Camadas
-
-```
-📦 com.mateuslll.taskflow
-│
-├── � domain/                          # Camada de Domínio (Core Business Logic)
-│   ├── entities/                       # Entidades de Negócio (Agregados)
-│   │   ├── User.java                   # Agregado Raiz: Usuário
-│   │   ├── Role.java                   # Entidade: Papel/Perfil
-│   │   └── VacationRequest.java        # Agregado Raiz: Solicitação de Férias
-│   │
-│   ├── valueobjects/                   # Value Objects (Imutáveis)
-│   │   ├── Email.java                  # Encapsula validação de email
-│   │   ├── Password.java               # Encapsula criptografia BCrypt
-│   │   └── VacationPeriod.java         # Período de férias com validações
-│   │
-│   ├── enums/                          # Enumerações de Domínio
-│   │   ├── UserStatus.java             # Estados do usuário
-│   │   ├── VacationRequestStatus.java  # Estados da solicitação
-│   │   └── PermissionType.java         # Tipos de permissões
-│   │
-│   ├── repositories/                   # Interfaces de Repositório (Portas)
-│   │   ├── UserRepository.java         # Contrato para persistência de usuários
-│   │   ├── RoleRepository.java         # Contrato para persistência de roles
-│   │   └── VacationRequestRepository.java
-│   │
-│   └── exceptions/                     # Exceções de Domínio
-│       ├── DomainException.java        # Exceção base
-│       ├── InvalidEmailException.java  # Violação de regra de email
-│       └── InvalidPasswordException.java
-│
-├── � application/                      # Camada de Aplicação (Use Cases)
-│   ├── usecases/                       # Casos de Uso (CQRS-like)
-│   │   ├── user/
-│   │   │   ├── CreateUser.java         # UC: Criar usuário
-│   │   │   ├── RetrieveUser.java       # UC: Buscar usuário por ID
-│   │   │   ├── UpdateUser.java         # UC: Atualizar usuário
-│   │   │   ├── ActivateUser.java       # UC: Ativar usuário
-│   │   │   ├── DeactivateUser.java     # UC: Desativar usuário
-│   │   │   └── ChangePassword.java     # UC: Alterar senha
-│   │   │
-│   │   └── vacation/
-│   │       ├── CreateVacationRequest.java
-│   │       ├── RetrieveVacationRequest.java
-│   │       ├── ApproveVacationRequest.java
-│   │       ├── RejectVacationRequest.java
-│   │       └── CancelVacationRequest.java
-│   │
-│   ├── controllers/                    # Controladores REST
-│   │   ├── UserController.java         # Endpoints de usuários
-│   │   └── VacationRequestController.java
-│   │
-│   └── persistence/                    # Adapters para repositórios
-│
-└── � infrastructure/                   # Camada de Infraestrutura (Adaptadores)
-    ├── config/                         # Configurações Spring
-    │   ├── SecurityConfig.java         # Configuração de segurança
-    │   └── OpenApiConfig.java          # Configuração Swagger
-    │
-    ├── security/                       # Implementações de segurança
-    │   ├── JwtTokenProvider.java       # Geração/validação JWT
-    │   └── CustomUserDetailsService.java
-    │
-    └── persistence/                    # Implementações JPA
-        ├── entities/                   # Entidades JPA (Adaptadores)
-        │   ├── UserJpaEntity.java      # Mapeamento ORM do User
-        │   ├── RoleJpaEntity.java
-        │   └── VacationRequestJpaEntity.java
-        │
-        ├── repositories/               # Repositórios JPA (Spring Data)
-        │   ├── UserJpaRepositoryImpl.java  # Implementa UserRepository
-        │   └── RoleJpaRepositoryImpl.java
-        │
-        └── mappers/                    # Mappers (MapStruct)
-            ├── UserMapper.java         # Domain ↔ JPA Entity
-            └── VacationRequestMapper.java
-```
-
-**Fluxo de Leitura:** Database → JPA Entity → Mapper → Domain Entity → Use Case → Controller → JSON Response  
-**Fluxo de Escrita:** JSON Request → Controller → Use Case → Domain Entity (validações) → Repository → JPA Entity → Database
-
-### 🔌 Dependency Rules (Clean Architecture)
+### 📐 Estrutura atual (resumo)
 
 ```
-Infrastructure → Application → Domain
-    ↓               ↓            ↑
-Frameworks      Use Cases    Pure Java
-Spring Boot     DTOs         Business Logic
-JPA/Hibernate   Controllers  Entities
-MapStruct                    Value Objects
+src/main/java/com/mateuslll/taskflow
+├── application/
+│   ├── controllers/         # Endpoints REST (auth, users, vacations, bootstrap)
+│   ├── persistence/         # Entities JPA, mappers e adapters de repositório
+│   └── usecases/            # Casos de uso por domínio (auth, user, vacation)
+├── common/
+│   ├── exceptions/          # Exceções de negócio e handler global
+│   └── messages/            # Mensagens centralizadas
+├── domain/
+│   ├── entities/            # Entidades de domínio
+│   ├── enums/               # Enums de negócio
+│   ├── repository/          # Portas (interfaces) de repositório
+│   └── valueobject/         # Value objects (Email, Password, DateRange)
+└── infrastructure/
+    ├── config/              # OpenAPI e configuração geral
+    └── security/            # JWT, filtros e configuração de segurança
 ```
 
-### 🎨 Princípios de Design
+### 🔄 Fluxo de dados
 
-**✅ Separation of Concerns** - Cada camada tem responsabilidade única e bem definida  
-**✅ Dependency Inversion** - Domain não conhece Infrastructure (depende de abstrações)  
-**✅ Single Responsibility** - Cada Use Case executa uma operação de negócio  
-**✅ DDD Tactical Patterns** - Aggregates, Value Objects, Repositories, Domain Events
+- **Entrada:** Controller → UseCase → Repositório (porta) → Adapter JPA → Banco
+- **Saída:** Banco → Adapter JPA → Mapper → DTO/Response
+- **Regras de negócio:** permanecem centralizadas no domínio e nos casos de uso
+
+### 🔌 Regras de dependência
+
+```
+infrastructure -> application -> domain
+```
+
+- O `domain` não depende de frameworks.
+- `application` orquestra casos de uso e contratos.
+- `infrastructure` contém implementação técnica (Spring, JWT, JPA, OpenAPI).
 
 ---
 
