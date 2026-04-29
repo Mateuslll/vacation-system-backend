@@ -9,20 +9,28 @@
 
 ## 📋 Índice
 
-- [🎯 Visão Geral](#-visão-geral)
-- [🛠 Tecnologias](#-tecnologias)
-- [🏗️ Arquitetura](#️-arquitetura)
-  - [Estrutura de Camadas](#-estrutura-de-camadas)
-  - [Fluxo de Dados](#-fluxo-de-dados)
-  - [Dependency Rules](#-dependency-rules-clean-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [⚡ Quick Review (Docker Hub)](#-quick-review-docker-hub)
+- [🚀 TaskFlow Manager](#-taskflow-manager)
+  - [📋 Índice](#-índice)
+  - [⚡ Quick Review (Docker Hub)](#-quick-review-docker-hub)
+    - [Step by step](#step-by-step)
+  - [Seed de utilizadores demo](#seed-de-utilizadores-demo)
+  - [🎯 Visão Geral](#-visão-geral)
+  - [🛠 Tecnologias](#-tecnologias)
+  - [🏗️ Arquitetura](#️-arquitetura)
+    - [📐 Estrutura atual (resumo)](#-estrutura-atual-resumo)
+    - [🔄 Fluxo de dados](#-fluxo-de-dados)
+    - [🔌 Regras de dependência](#-regras-de-dependência)
+  - [🚀 Quick Start](#-quick-start)
+    - [**Pré-requisitos**](#pré-requisitos)
+    - [**1. Clonar o Repositório**](#1-clonar-o-repositório)
+    - [**2. Subir Ambiente com Docker**](#2-subir-ambiente-com-docker)
+    - [**3. Testar Endpoints**](#3-testar-endpoints)
 
 ---
 
 ## ⚡ Quick Review (Docker Hub)
 
-As duas imagens publicas ja estao no Docker Hub:
+As duas imagens publicas ja estao no Docker Hub (manifest **multi-arch** `linux/amd64` + `linux/arm64` na tag `latest`):
 - `mateuslll/taskflow-frontend:latest`
 - `mateuslll/taskflow-backend:latest`
 
@@ -48,6 +56,36 @@ Para encerrar:
 
 ```bash
 docker compose -p task-flow-app -f docker-compose.review.yml down
+```
+
+---
+
+## Seed de utilizadores demo
+
+Script `scripts/seed_demo_users.py` cria **3 gestores (MANAGER)** e **12 colaboradores (USER)** com **a mesma senha** para todos esses utilizadores, e associa **4 colaboradores** a cada gestor.
+
+**Senha padrão dos 15 utilizadores** (sobrescreve com `DEMO_SEED_PASSWORD`):
+
+| Variável | Valor por omissão | Notas |
+|----------|-------------------|--------|
+| `DEMO_SEED_PASSWORD` | `DemoTeam2026` | Cumpre as regras de senha da API (maiúscula, minúscula, dígitos). |
+| `TASKFLOW_API_BASE` | `http://localhost:8080/api/v1` | URL base da API. |
+| `ADMIN_EMAIL` | `admin@taskflow.com` | Conta admin para chamar a API. |
+| `ADMIN_PASSWORD` | `Admin@123` | Igual ao *quick login* do frontend de desenvolvimento. |
+
+O script chama `POST /bootstrap/create-admin` de forma idempotente (ignora conflito se o admin já existir), faz login e cria os utilizadores com emails `seed-m1@taskflow.demo` … `seed-m3@taskflow.demo` e `seed-u01@taskflow.demo` … `seed-u12@taskflow.demo`.
+
+```bash
+python3 scripts/seed_demo_users.py
+```
+
+Para republicar só o backend no Docker Hub (multi-arch), na raiz do repositório backend:
+
+```bash
+docker buildx use rail-builder
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t mateuslll/taskflow-backend:latest --push .
 ```
 
 ---
